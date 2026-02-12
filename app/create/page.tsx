@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CardPreview from "@/components/CardPreview";
 import CardTemplateSelector from "@/components/CardTemplateSelector";
 import { OCCASIONS, GiftFormData, validateGiftForm } from "@/lib/validation";
 
-export default function CreateGiftPage() {
+function CreateGiftForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const canceled = searchParams.get("canceled");
@@ -367,5 +367,17 @@ export default function CreateGiftPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CreateGiftPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
+        <div className="text-gray-600">Loading...</div>
+      </div>
+    }>
+      <CreateGiftForm />
+    </Suspense>
   );
 }
