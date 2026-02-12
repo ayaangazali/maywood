@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum AmountType {
+  FIXED
+  RANGE
+}
+
+enum OrderStatus {
+  DRAFT
+  AWAITING_PAYMENT
+  PAID
+  ACTIVE
+  LOCKED
+  REDEEMED
+  EXPIRED
+  FULFILLING
+  FULFILLED
+  FULFILLMENT_FAILED
+  CANCELED
+}
+
+enum FulfillmentProvider {
+  TANGO
+  GIFTBIT
+  MANUAL
+  MOCK
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model GiftOrder {
+  id                        String              @id @default(uuid())
+  senderName                String
+  senderEmail               String
+  recipientName             String
+  recipientEmail            String
+  recipientPhone            String?
+  amountType                AmountType
+  amountFixed               Int?
+  amountMin                 Int?
+  amountMax                 Int?
+  currency                  String              @default("usd")
+  occasion                  String?
+  message                   String
+  cardTemplateId            String
+  notifyRecipient           Boolean             @default(true)
+  status                    OrderStatus         @default(DRAFT)
+  stripeCheckoutSessionId   String?
+  stripePaymentIntentId     String?
+  claimTokenHash            String?             @unique
+  claimTokenLast4           String?
+  claimExpiresAt            DateTime?
+  claimedAt                 DateTime?
+  selectedItemId            String?
+  selectedItem              CatalogItem?        @relation(fields: [selectedItemId], references: [id])
+  fulfillmentProvider       FulfillmentProvider @default(MOCK)
+  fulfillmentExternalId     String?
+  fulfillmentPayloadJson    String?
+  remainderCents            Int?
+  remainderAction           String?
+  remainderFulfilled        Boolean             @default(false)
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  auditEvents AuditEvent[]
+  emails      EmailOutbox[]
+
+  @@index([claimTokenHash])
+  @@index([senderEmail])
+  @@index([recipientEmail])
+  @@index([status])
+  @@index([stripeCheckoutSessionId])
+}
+
+model CatalogItem {
+  id                String   @id @default(uuid())
+  title             String
+  description       String
+  priceCents        Int
+  currency          String   @default("usd")
+  providerProductId String
+  imageUrl          String
+  category          String
+  active            Boolean  @default(true)
+  popularity        Int      @default(0)
+  createdAt         DateTime @default(now())
+
+  giftOrders GiftOrder[]
+
+  @@index([active, priceCents])
+  @@index([category])
+}
+
+model AuditEvent {
+  id           String    @id @default(uuid())
+  giftOrderId  String
+  giftOrder    GiftOrder @relation(fields: [giftOrderId], references: [id])
+  type         String
+  message      String
+  metadataJson String?
+  createdAt    DateTime  @default(now())
+
+  @@index([giftOrderId])
+  @@index([type])
+}
+
+model EmailOutbox {
+  id          String      @id @default(uuid())
+  giftOrderId String
+  giftOrder   GiftOrder   @relation(fields: [giftOrderId], references: [id])
+  to          String
+  subject     String
+  html        String
+  status      EmailStatus @default(QUEUED)
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@index([giftOrderId])
+  @@index([status])
+}
